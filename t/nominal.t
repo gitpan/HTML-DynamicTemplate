@@ -1,10 +1,12 @@
 use strict;
+use English;
+
 use HTML::DynamicTemplate;
 
 print "1..1\n";
 
 my $template = new HTML::DynamicTemplate('t/templates/test.tmpl');
-$template->set_recursion_limit(5);
+$template->set_recursion_limit(50);
 
 $template->set(TEST => 'TEST');
 $template->set(TEST_ALPHA => 'ALPHA',
@@ -16,37 +18,25 @@ $template->set(TEST_ALPHA => 'ALPHA',
 
 $template->clear;
 
-#   regular stuff
-#
 $template->set(TEST => 'Test');
-$template->set(
-    TEST_ALPHA => 'Alpha',
-    TEST_BETA  => 'Beta',
-    TEST_GAMMA => 'Gamma',
-    SET => 'Set',
-    INCLUDE => 'Include',
-    INCLUDE_PATH => 't/templates/include.tmpl'
-);
-
-#   callbacks
-#
-$template->set('TITLE' =>
-    sub{
-        my $this = shift;
-        $this->clear('TITLE');
-        return 'test'
-    }
-);
+$template->set(TEST_ALPHA => 'Alpha',
+               TEST_BETA  => 'Beta',
+               TEST_GAMMA => 'Gamma',
+               NAME => 'Name',
+               NAME1 => 'Name1',
+               NAME_1 => 'Name 1',
+               SET => 'Set',
+               INCLUDE => 'Include',
+               INCLUDE_PATH => 't/templates/include.tmpl');
 
 my $result = $template->render();
-my $expected;
 
-local $/ = undef;
-open EXPECTED, "t/nominal_expected.txt" || die $!;
-$expected .= <EXPECTED>;
+my $expected;
+open EXPECTED, "t/nominal_expected.txt" or die $OS_ERROR;
+while(<EXPECTED>) { $expected .= $ARG }
 close EXPECTED;
 
-open RESULT, ">t/nominal_result.txt" || die $!;
+open RESULT, ">t/nominal_result.txt" or die $OS_ERROR;
 print RESULT $result;
 close RESULT;
 

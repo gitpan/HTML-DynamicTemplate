@@ -1,16 +1,10 @@
-version 0.99
+version 0.95
 ------------
-- Code largely rewritten by Matt Harrison, mharriso@rna.bio.mq.edu.au
-- All future maintenance and releases of module assumed by M.H.
-- Added support for template variables to contain references
-- Added get(), set(), and overrideable callback_*() routines
-- Added recursive variable substitution
-- Added option of scalar ref to constructor
-- Added copy constructor behaviour to new()
-- Added $DEFINE directive
-- Added $STRICT class variable
-- Documentation greatly extended and updated to reflect all changes
-
+- Enforcing stricter template variable naming rules.  Names must:
+  * Be at least two characters in length
+  * Begin with an uppercase letter
+  * End with an uppercase letter or a number
+  * Contain only uppercase letters, numbers or underscores
 
 version 0.94
 ------------

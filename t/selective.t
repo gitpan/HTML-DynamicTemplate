@@ -1,4 +1,6 @@
 use strict;
+use English;
+
 use HTML::DynamicTemplate;
 
 print "1..1\n";
@@ -20,6 +22,9 @@ $template->set(TEST => 'Test');
 $template->set(TEST_ALPHA => 'Alpha',
                TEST_BETA  => 'Beta',
                TEST_GAMMA => 'Gamma',
+               NAME => 'Name',
+               NAME1 => 'Name1',
+               NAME_1 => 'Name 1',
                SET => 'Set',
                INCLUDE => 'Include',
                INCLUDE_PATH => 't/templates/include.tmpl');
@@ -28,6 +33,9 @@ my @variables = ('TEST',
                  'TEST_ALPHA',
                  'TEST_BETA',
                  'TEST_GAMMA',
+                 'NAME',
+                 'NAME1',
+                 'NAME_1',
                  'SET',
                  'SET_TEST_ALPHA',
                  'SET_TEST_BETA',
@@ -36,14 +44,13 @@ my @variables = ('TEST',
                  'INCLUDE_PATH');
 
 my $result = $template->render(@variables);
-my $expected;
 
-local $/ = undef;
-open EXPECTED, "t/selective_expected.txt" or die $!;
-$expected = <EXPECTED>;
+my $expected;
+open EXPECTED, "t/selective_expected.txt" or die $OS_ERROR;
+while(<EXPECTED>) { $expected .= $ARG }
 close EXPECTED;
 
-open RESULT, ">t/selective_result.txt" or die $!;
+open RESULT, ">t/selective_result.txt" or die $OS_ERROR;
 print RESULT $result;
 close RESULT;
 

@@ -16,6 +16,14 @@
 <p>TEST_BETA: Beta</p>
 <p>TEST_GAMMA: Gamma</p>
 
+<!-- NAME ITERATION -->
+<p>NAME: Name</p>
+<p>NAME1: Name1</p>
+<p>NAME_1: Name 1</p>
+<p>1NAME: $1NAME</p>
+<p>_NAME: $_NAME</p>
+<p>NAME_: Name_</p>
+
 <!-- SET ITERATION -->
 <p>SET: Set</p>
 <p>SET_TEST_ALPHA: Set Test Alpha</p>
@@ -28,6 +36,7 @@
 <p>INCLUDE(INCLUDE_PATH): Included</p>
 <p>INCLUDE(t/templates/include.tmpl): Included</p>
 <p>INCLUDE(t/templates/include2.tmpl): Included Included</p>
+<p>INCLUDE(t/templates/infinite.tmpl): [ include recursion limit exceeded ]</p>
 
 </body>
 </html>
