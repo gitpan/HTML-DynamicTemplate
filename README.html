@@ -1,0 +1,727 @@
+<HTML>
+<HEAD>
+<TITLE>HTML::DynamicTemplate</TITLE>
+<LINK REV="made" HREF="mailto:matt@dirty.uucp">
+</HEAD>
+
+<BODY>
+
+<A NAME="__index__"></A>
+<!-- INDEX BEGIN -->
+
+<UL>
+
+	<LI><A HREF="#name  html::dynamictemplate">NAME</A></LI>
+	<LI><A HREF="#synopsis">SYNOPSIS</A></LI>
+	<LI><A HREF="#description">DESCRIPTION</A></LI>
+	<LI><A HREF="#usage">USAGE</A></LI>
+	<UL>
+
+		<LI><A HREF="#template variables">Template variables</A></LI>
+		<UL>
+
+			<LI><A HREF="#template directive $set()">Template directive $SET()</A></LI>
+			<LI><A HREF="#template directive $define()">Template directive $DEFINE()</A></LI>
+			<LI><A HREF="#template directive $include()">Template directive $INCLUDE()</A></LI>
+		</UL>
+
+		<LI><A HREF="#examples">Examples</A></LI>
+		<LI><A HREF="#performance comments">Performance comments</A></LI>
+	</UL>
+
+	<LI><A HREF="#methods">METHODS</A></LI>
+	<UL>
+
+		<LI><A HREF="#constructors">Constructors</A></LI>
+		<UL>
+
+			<LI><A HREF="#new">new</A></LI>
+		</UL>
+
+		<LI><A HREF="#object methods">Object methods</A></LI>
+		<UL>
+
+			<LI><A HREF="#clear">clear</A></LI>
+			<LI><A HREF="#has_defined">has_defined</A></LI>
+			<LI><A HREF="#get">get</A></LI>
+			<LI><A HREF="#render">render</A></LI>
+			<LI><A HREF="#set">set</A></LI>
+			<LI><A HREF="#set_recursion_limit">set_recursion_limit</A></LI>
+		</UL>
+
+		<LI><A HREF="#abstract methods">Abstract methods</A></LI>
+		<UL>
+
+			<LI><A HREF="#callback_array">callback_ARRAY</A></LI>
+			<LI><A HREF="#callback_hash">callback_HASH</A></LI>
+			<LI><A HREF="#callback_scalar">callback_SCALAR</A></LI>
+			<LI><A HREF="#callback_glob">callback_GLOB</A></LI>
+		</UL>
+
+	</UL>
+
+	<LI><A HREF="#credits">CREDITS</A></LI>
+	<UL>
+
+		<LI><A HREF="#authors and contacts">Authors and contacts</A></LI>
+		<LI><A HREF="#legalese">Legalese</A></LI>
+	</UL>
+
+</UL>
+<!-- INDEX END -->
+
+<HR>
+<P>
+<H1><A NAME="name  html::dynamictemplate">NAME</A></H1>
+<P>HTML::DynamicTemplate - HTML template class.</P>
+<P>
+<HR>
+<H1><A NAME="synopsis">SYNOPSIS</A></H1>
+<PRE>
+    use HTML::DynamicTemplate;</PRE>
+<PRE>
+    my $template = new HTML::DynamicTemplate ('path/to/template');
+    $template-&gt;set_recursion_limit($integer);</PRE>
+<PRE>
+    #   template variables can be set from perl or
+    #   within the template itself
+    #
+    $template-&gt;set( BACKGROUND_PIC  =&gt; '../some/pic.gif' );
+    $template-&gt;set(
+        NAME_1   =&gt; $value_1,
+        NAME_2   =&gt; $value_2,
+        NAME_3   =&gt; \@some_array,
+        BODY     =&gt; 'background=$BACKGROUND_PIC link=blue',
+        CALLBACK =&gt; sub{ return &quot;some html or template \$VARS&quot; }
+    );
+    $template-&gt;set( \%other_vars );
+    $value = $template-&gt;get('VAR');</PRE>
+<PRE>
+    #   clear all variables or just clear some
+    #
+    $template-&gt;clear();
+    $template-&gt;clear( \@variables );</PRE>
+<PRE>
+    #   obtain &amp; print the substituted template...
+    #
+    print $template-&gt;render();
+    print $template-&gt;render(@variables);</PRE>
+<PRE>
+    #   Create specialised DataTemplate objects by subclassing
+    #   and overriding the special callback_* routines.
+    #   who said perl doesn't have inner classes??? ;-)
+    #
+    {
+        package DataTemplate;
+        @DataTemplate::ISA = qw/ HTML::DynamicTemplate /;</PRE>
+<PRE>
+        sub callback_ARRAY
+        {
+            my( $this, $name, $array_ref ) = @_;
+            #   some cool stuff here...
+            return 'some html or template $VARS'
+                if $name eq 'DATA';
+        }
+    }
+    my $data_tmpl = new DataTemplate ('/templates/data.tmpl');
+    $data_tmpl-&gt;set('DATA', \@my_data );
+    print $data_tmpl-&gt;render();</PRE>
+<PRE>
+    path/to/template
+    ----------------
+    &lt;html&gt;
+    &lt;body $BODY&gt;
+    $DEFINE(HEADING, &quot;My Page&quot;)
+    $INCLUDE(/some/common/header)</PRE>
+<PRE>
+    $DEFINE(SCOPED_VAR, &quot;temporary value&quot;)
+    $INCLUDE(/some/other/template)</PRE>
+<PRE>
+    $SET(AUTHOR, &quot;Matt Harrison&quot;)
+    $INCLUDE(/some/common/footer)
+    ...</PRE>
+<PRE>
+    some/common/header
+    __________________
+    &lt;img $LOGO&gt;
+    &lt;font $FONT&gt;$HEADING&lt;/font&gt;
+    &lt;br&gt;
+    ...</PRE>
+<P>
+<HR>
+<H1><A NAME="description">DESCRIPTION</A></H1>
+<P>HTML::DynamicTemplate is a class implementing a HTML/text
+template in perl. The objective of the class is to provide a
+mechanism by which to effectively decouple the design elements of a
+page from the dynamic content, but also to provide for the
+generalisation of dynamic content generation through the
+use of extensible objects.</P>
+<P>In this sense, the class strives to avoid the temptation
+to let the swiss-knifing perl hacker introduce a word of
+perl in a html page, and keep the pedantic
+web-page designers out of our (my) lovely code ;-),
+all the while keeping the power of perl through
+the use of template variables as references to perl
+code or arbitrarily-complex data structures.</P>
+<P>Significant features include the ability to set template
+variables from within perl code and the templates themselves,
+the ability to recursively include/substitute other templates and
+template variables, the tremendously useful ability to
+define template variables as perl references and callback
+subroutines, and the provision of an object-oriented
+interface to promote the use of inheritance and polymorphism.</P>
+<P>These features allow the programmer/designer to maintain a
+consistent look and feel across multiple pages, while
+keeping a common code base, and to change
+either/both the content and layout of a site easily and
+independently.</P>
+<P>
+<HR>
+<H1><A NAME="usage">USAGE</A></H1>
+<P>HTML::DynamicTemplate uses 4 syntactic constructions
+within HTML source files: template variables, of the
+form '$VARIABLE'; the template variable-setting constructs
+$SET and $DEFINE; and the template-including directive
+$INCLUDE.</P>
+<P>All variable and directive names are specified in uppercase.
+This is enforced. A second concession to make is to be sure
+to escape quotes (&amp;quot;) and closing parantheses
+(&amp;#41;) as HTML entities. Lastly, anything that LOOKS like a template
+variable -- it has a '$' followed by uppercase chars ( /$\w+/ ) --
+will be substituted or removed. Therefore, to get a literal
+$THIS in your html you have to escape the '$' as html. sorry.
+Note also that the renderer doesn't care if template
+variables/directives occur within HTML comments, though the
+result of the substitution will still be within html comments.</P>
+<P>
+<H2><A NAME="template variables">Template variables</A></H2>
+<P>&lt;font $HIGHLIGHT&gt;  &lt;-- This is standard HTML with an
+embedded variable reference which is substituted
+with the value of the template variable 'HIGHLIGHT' when
+the template is rendered. Every instance of the text '$HIGHLIGHT'
+in the given template, and all those recursively included
+from this one will be replaced with this value.</P>
+<P>Template variables may be set and re-set from within perl
+by the method set(), or from within the template
+itself by the template directives $SET() and $DEFINE(),
+described below.</P>
+<P>Variables themselves may also contain other template variable
+references ie $SET(FOO, ``some text $BAR'') -- this works as you would
+expect, though in the case of $DEFINE(), be aware of circular
+references. Infinite recursion conditions are monitored
+in any case.</P>
+<P>
+<H3><A NAME="template directive $set()">Template directive $SET()</A></H3>
+<PRE>
+    $SET(PAGE_TITLE, &quot;What's New?&quot;)
+    $SET(HIGHLIGHT, &quot;color=red size=+1&quot;)
+    $SET(PAGE_BODY, &quot;background=$BACKGROUND link=$LINK_COLOUR&quot;)</PRE>
+<P>Template variables are set within perl code using the <CODE>set()</CODE>
+method or within the template itself with the $SET()
+directive. This is useful when setting variables for use
+by all included templates. For setting page-specific default
+values which can be overriden by other templates/code,
+see the $DEFINE directive.</P>
+<P>
+<H3><A NAME="template directive $define()">Template directive $DEFINE()</A></H3>
+<PRE>
+    $DEFINE(TABLE_TITLE, 'Table I')
+    $DEFINE(TITLE, &quot;Page $PAGE_NO $PAGE_DESC&quot;)</PRE>
+<P>In a similar fashion to $SET(), template variables may also be set
+within templates using the $DEFINE directive. $DEFINE
+operates like $SET, within the important exception that
+variables defined with $DEFINE are &lt;i&gt;scoped&lt;/i&gt; to the
+template in which they were defined and to all templates
+$INCLUDE-ed from this one.</P>
+<P>The $DEFINE directive is analogous to the perl function
+'local', with an important exception - $DEFINE-d variables
+are overriden by variables which have been $SET or set().
+The main purpose of $DEFINE is to provide page-specific
+default values. In most cases it is more useful to
+$DEFINE variables so they can be overriden by $SET
+directives or perl code.</P>
+<PRE>
+    eg:
+        $DEFINE(TITLE, &quot;DefaultTitle&quot;)
+        &lt;title&gt;$TITLE&lt;/title&gt;</PRE>
+<P>If the above $DEFINE() directive were $SET(), the value of
+$TITLE could never be altered from ``DefaultTitle'' because
+it occurs immediately prior to the use of $TITLE.</P>
+<P>
+<H3><A NAME="template directive $include()">Template directive $INCLUDE()</A></H3>
+<PRE>
+    $INCLUDE(templates/example.tmpl)
+    $INCLUDE($PATH_TEMPLATES/$TABLE_TEMPLATE)</PRE>
+<P>Additionally, templates may be recursively included by
+another template by the $INCLUDE directive.</P>
+<P>Template paths may also be variable references, as in
+$INCLUDE($BANNER_AD). Any variable references found in
+included templates will be substituted as in the original template.
+The extension '.tmpl' for html templates is arbitrary but useful.</P>
+<P>
+<H2><A NAME="examples">Examples</A></H2>
+<P>For example, a simple but effective usage of this class from a script
+may be to have a set or sets of template variables defined
+in an external, centralised configuration file and to initialise
+template <CODE>object(s)</CODE> from this -</P>
+<P>eg:</P>
+<PRE>
+    /main/conf/file
+    _______________
+    # note: valid perl!
+    $DEFAULT = {
+        TEXT_COLOUR     =&gt;  'white',
+        BACKGROUND      =&gt;  'some_pic.png',
+        ...
+    };</PRE>
+<PRE>
+    script
+    ______
+    {
+        # load template vars into private namespace
+        package Vars;
+        do('/main/conf/file') or die;
+    }</PRE>
+<PRE>
+    my $template = new HTML::DynamicTemplate ( $main_template );
+    $template-&gt;set( $Vars::DEFAULT );
+    ...
+    print $template-&gt;render();</PRE>
+<P>As stated previously, DynamicTemplate endeavours to keep perl and
+it's pseudo-guises out of html. However, all of perl's power is
+avaliable through defining template variables as either references
+to perl primitives or references to (callback) subroutines. A template
+variable may be defined from perl by the following:</P>
+<PRE>
+    $template-&gt;set('VAR', \&amp;my_subroutine ); # OR
+    $template-&gt;set('VAR',
+        sub{
+            my $template = shift;
+            my $value = $template-&gt;get('SOME_VAR');
+            $template-&gt;set('A_NEW_VAR', &quot;here is a new $value&quot;);
+            return 'some tasteful text, html, or $TEMPLATE_VAR\'s';
+        }
+    );</PRE>
+<P>This subroutine will be called each time the text '$VAR' appears
+in any template or included template. The return value will first be
+evaluated for other template directives, and then will be substituted
+in place of '$VAR'.</P>
+<P>Template variables may also be set to a hash, array, scalar or
+typeglob reference causes a special callback_* routine to be
+called, where '*' is the type of reference. See the section on
+the callback_* routines later in this document.</P>
+<P>A simple but expressive use of this callback functionality creates
+a RDBMS-backed dynamic web page (minus error checking and fluff):</P>
+<PRE>
+    use DBI;
+    use HTML::DynamicTemplate;</PRE>
+<PRE>
+    #   init template + callbacks
+    my $main_tmpl = new HTML::DynamicTemplate ('./page_template.tmpl');
+    $main_tmpl-&gt;set( \%page_defaults );
+    $main_tmpl-&gt;set( 'MY_CALLBACK',
+        sub{
+            my $tmpl = shift;
+            my $value = $tmpl-&gt;get('SOME_COLUMN_VALUE');
+            return reformatted( $value );
+        }
+    );</PRE>
+<PRE>
+    #   DB code
+    my $dbh = new DBI ();
+    $dbh-&gt;connect( $db_connect_params );</PRE>
+<PRE>
+    my $sth = $dbh-&gt;prepare(&quot;SELECT * FROM BLAH&quot;);
+    $sth-&gt;execute();</PRE>
+<PRE>
+    #   instantiate and print result template(s)
+    while ( my $result_row = $sth-&gt;fetchrow_hashref() )
+    {
+        my $entry = $main_tmpl-&gt;new('./result_template.tmpl');
+        $entry-&gt;set( $result_row );
+        print $entry-&gt;render();
+    }</PRE>
+<P>Key to this approach is the use of template variables within
+'./result_template' which have the same names as the column
+names returned from the database. This allows each row result
+to be passed directly to a template object or template objects.</P>
+<P>Data which needs 'massaging' for presentation are defined in
+terms of an extra template variable in 'result_template' which
+is mapped to a callback subroutine as shown above. This allows
+for clean and extensible cgi scripts where most of the ugly
+html code is mapped to a series of template callback subroutines,
+with the true html framework stored in a html template file.</P>
+<P>In some ways, this model is anologous to the event-driven programming
+of GUI toolkits, such as the AWT from java, where the event
+of enountering a template variable in a html template (the 'gui')
+'fires' the mapped response.</P>
+<P>Note that a template object reference is passed as the
+first argument to each callback subroutine (wherever it
+resides), allowing the application programmer to control
+other template variables through the use of <CODE>get()</CODE> and
+<CODE>set()</CODE> routines, and to change other state information.</P>
+<P>The use of closures to preserve private data is
+also effective. eg:</P>
+<PRE>
+    {
+        my $counter = 0;
+        $template-&gt;set( 'COUNT',
+            sub{
+                return ++$counter;
+            }
+        );
+    }</PRE>
+<P>With care and forethought, even your dynamic content-generation
+code can be easily reused across objects, applications and
+scripts.</P>
+<P>
+<H2><A NAME="performance comments">Performance comments</A></H2>
+<P>DynamicTemplate <EM>sans</EM> comments and pod weighs in at about 9Kb.
+Parsing/Rendering of about 100Kb of a fairly complicated set of
+templates (text only; complicated in the sense that they use many
+variables and directives) takes about 18 msec on a moderate
+(celeron 500) machine. Every effort to keep things clean
+and brisk has been made - however please by all means send
+me suggestions on improvements.</P>
+<P>
+<HR>
+<H1><A NAME="methods">METHODS</A></H1>
+<P>
+<H2><A NAME="constructors">Constructors</A></H2>
+<P>
+<H3><A NAME="new">new</A></H3>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    new( $template_filename )</PRE>
+<PRE>
+        $template_filename  -   A path to a HTML template file.</PRE>
+<P>Constructor for the template. Returns a reference to a
+HTML::DynamicTemplate object based on the specified template file,
+or an exception if the template file cannot be opened.</P>
+<P><STRONG>NOTE</STRONG>: This constructor allows the use of the Class-&gt;<CODE>new()</CODE> syntax
+as well as the $object-&gt;<CODE>new()</CODE> syntax to create new objects.
+However, $object-&gt;<CODE>new()</CODE> ie: calling <CODE>new()</CODE> on an existing object
+creates and new object and then <STRONG>clones</STRONG> all aspects of the
+calling object except for the HTML source given by the argument
+$template_filename or \$source.</P>
+<P>This means that the code...</P>
+<PRE>
+    my $new_tmpl = $template-&gt;new(&quot;/some/template.tmpl&quot;);</PRE>
+<P>...creates a new object and then (shallow) copies its set of template
+variables into a NEW hash, as well as $template's other settings.
+This is a convenience for the case where you want 2 or more copies
+of an object with the same template variables defined, but want to
+use them for independent html templates (As a side note, the
+$SET() and $DEFINE() namespaces are completely separate - the
+hash for $DEFINE() variables is dynamic and exists only at
+rendering time...it can never be copied or inherited ).</P>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    new( \$source )</PRE>
+<PRE>
+        \$source    -   a scalar reference to a string containing
+                        HTML with embedded template variables.</PRE>
+<P>Alternative constructor, which takes a scalar reference to
+HTML source. Returns an exception if passed a non-SCALAR reference.
+Otherwise identical in effect to new( $template_filename ).</P>
+<P>
+<H2><A NAME="object methods">Object methods</A></H2>
+<P>
+<H3><A NAME="clear">clear</A></H3>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    clear()</PRE>
+<P>Clears template variables. Useful when processing table row
+templates.</P>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    clear( @variables )</PRE>
+<PRE>
+        @variables      -   List of variables to clear</PRE>
+<P>Clears only the template variables specified by @variables.
+Note that template variable names are always given in
+uppercase.</P>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    clear( \@variables )</PRE>
+<PRE>
+        \@variables     -   List of template variables to clear</PRE>
+<P>Same as for clear( @variables ), but argument is passed as
+a reference, which is faster if @variables
+contains many elements.</P>
+<P>
+<H3><A NAME="has_defined">has_defined</A></H3>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    $boolean = $this-&gt;has_defined('TEMPLATE_VAR')</PRE>
+<PRE>
+        $boolean    -   boolean true or false</PRE>
+<P>Return a boolean value indicating whether this
+template has the template variable $TEMPLATE_VAR.
+&lt;B:Note&gt;: that boolean true is returned even if
+$TEMPLATE_VAR is itself false or undefined, a la
+perl exists().</P>
+<P>
+<H3><A NAME="get">get</A></H3>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    $value = $this-&gt;get( $var_name )</PRE>
+<PRE>
+        $value      -   The value of the template
+                        variable $var_name.
+        $var_name   -   A template variable name</PRE>
+<P>Returns the current value of the template variable given
+by $var_name. Returns undef if the template variable name
+is non-existent and returns boolean false if the template
+variable given by $var_name exists but has no value (is false
+or undefined).</P>
+<P>Note that $value may contain any valid perl scalar, including
+references to CODE, HASHes, ARRAYs, SCALARs etc..</P>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    get()</PRE>
+<P>This usage returns a reference to the hash of all
+currently-defined template variables. Note that
+template variables are always uppercase and are true
+for the regular expression /^\w+$/.</P>
+<P>
+<H3><A NAME="render">render</A></H3>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    $HTML = $this-&gt;render()</PRE>
+<PRE>
+        $HTML       -   A chunk of HTML as a string, with
+                        all template variables removed or
+                        substituted.</PRE>
+<P>Renders the current template object to 'pure' html, performing all
+template variable substitutions and template directives as found
+in the source template. Template variables and directives are
+described in the section 'USAGE'. Returns html with all
+template variables substituted and removed.</P>
+<P>Returns a blob of 'pure' html (Can html ever be pure? ;-) ).</P>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    $HTML = $this-&gt;render( @variables )</PRE>
+<PRE>
+        @variables      -   List of template variable names
+                            to use in rendering, removing - but
+                            not substituting - others.
+        $HTML           -   A chunk of HTML as a string, with
+                            all template variables removed or
+                            substituted.</PRE>
+<P>Renders template by performing variable substitutions on only those
+variable names specified in @variables. Otherwise identical to
+render(). Elements in @variables must be uppercase.</P>
+<P>
+<H3><A NAME="set">set</A></H3>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    $overwritten = $this-&gt;set( 'NAME' =&gt; $value )
+    $overwritten = $this-&gt;set( %parameters )</PRE>
+<PRE>
+        $overwritten    -   number of template variables redefined.
+        $value          -   Any perl scalar. see description.
+        %parameters     -   Hash of template variable names
+                            mapped to values, as in $value.</PRE>
+<P>Sets template variable to given value. $value can be just about any
+legal perl scalar. Any non-reference $value will be substituted
+verbatim in the given template wherever the text '$NAME' is
+found. $value may of course contain other template variables
+or template directives (note that $SET() directives used
+from within a template cannot contain another $SET(), though can
+contain $INCLUDE and $VAR subtitutions. <CODE>set()</CODE> can set anything to
+anything ).</P>
+<P>If $value contains a reference to code or a subroutine, then that
+code will be called for each instance of $NAME in a template. If
+$value contains any other reference type, then one of the various
+callback_*() routines will be called. see previous description
+of template variables.</P>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    $overwritten = $this-&gt;set( \%parameters )</PRE>
+<PRE>
+        $overwritten    -   number of template variables redefined.
+        %parameters     -   Hash of template variable names
+                            mapped to values, as in $value.</PRE>
+<P>Adds to the set of template variables given by
+%variables to the current set. Otherwise identical in effect
+to set( %hash ). This usage throws an exception if passed
+a non-HASH reference.</P>
+<P>
+<H3><A NAME="set_recursion_limit">set_recursion_limit</A></H3>
+<P><STRONG>usage</STRONG></P>
+<PRE>
+    set_recursion_limit( $depth )</PRE>
+<PRE>
+        $depth      -   An integer value indicating
+                        the depth to recursively include
+                        templates (via $INCLUDE).</PRE>
+<P>A default recursion limit for template includes is implemented to
+prevent infinite recursions. Use this method to override the
+default value (10).</P>
+<P>
+<H2><A NAME="abstract methods">Abstract methods</A></H2>
+<P>HTML::DynamicTemplate includes a set of 'abstract' methods for
+application programmers to override by subclassing.
+Each of these methods are called by HTML::DynamicTemplate
+whenever a template variable containing a (non-CODE) reference
+is encountered in a html template (during a call to <CODE>render()</CODE> ).
+CODE references are called directly, and the returned value
+substituted in place of the template variable.</P>
+<P>In the case of other types of references, HTML::DynamicTemplate
+calls the appropriate callback_* method,
+where the '*' is one of SCALAR, ARRAY, HASH, and GLOB
+as determined from the type of reference. There is
+currently no allowance for a callback method for
+objects.</P>
+<P>For instance, setting a template variable to
+an array reference eg:</P>
+<PRE>
+    $template-&gt;set( 'SOME_VAR', \@list );</PRE>
+<P>The <CODE>callback_ARRAY()</CODE> method will be called for
+each incidence of the template variable $SOME_VAR in
+the html template encapsulated by $template ( see <CODE>new()</CODE> ),
+because it contains an ARRAY reference.</P>
+<P>The current implementations for all of the callback_* routines
+in HTML::DynamicTemplate return the empty string ``''.</P>
+<P>Of course, there is no obligation to override all
+of the callback_* routines, as the default
+implementation for all the callback_* routines
+return the empty string ``''.</P>
+<P>Overriding the default implementation of one or more of
+the callback_* methods may be as simple as:</P>
+<PRE>
+    #   a perl 'inner class' ;-)
+    {
+        package RowTemplate;
+        @RowTemplate::ISA = qw/ HTML::DynamicTemplate /;</PRE>
+<PRE>
+        sub callback_ARRAY
+        {
+            my( $this, $name, $value ) = @_;
+            # your implementation here...
+            return 'some html';
+        }
+    }
+    ...
+    # somewhere else...
+    my $row_tmpl = new RowTemplate ($filename);</PRE>
+<P>An object created from a derived class can of course be used
+as any other HTML::DynamicTemplate object, except
+for it's behaviour with template variables
+which contain array references, thanks to the power
+of object polymorphism.</P>
+<P><STRONG>Method arguments</STRONG></P>
+<P>All callback methods will be called with the
+following arguments:</P>
+<PRE>
+    @_ = ( $this_template_obj, $variable_name, $value_reference )</PRE>
+<P>where:</P>
+<PRE>
+    $this_template_obj  -&gt; 'this' or 'self' or whatever you call your object refs
+    $variable_name      -&gt; the name of the template variable
+    $value_reference    -&gt; value of the template variable,
+                           a reference by definition.</PRE>
+<P>The overridden method can return any valid html,
+including html with other template variables. This return
+value is substituted into the 'calling' html template.</P>
+<P>
+<H3><A NAME="callback_array">callback_ARRAY</A></H3>
+<P><STRONG>usage</STRONG> <EM>protected abstract</EM></P>
+<PRE>
+    $HTML = $this-&gt;callback_ARRAY( 'VAR_NAME', \@array )</PRE>
+<PRE>
+        $HTML       -   A chunk of html as a string, possibly
+                        containing other embedded template variables.
+        'VAR_NAME'  -   The template variable name that refers to
+                        the array reference \@array.
+        \@array     -   The reference to the array of data referred
+                        to by the template variable 'VAR_NAME'.</PRE>
+<P>Only called when a template variable contains an
+ARRAY reference. Default implementation returns
+the empty string ``''.</P>
+<P>
+<H3><A NAME="callback_hash">callback_HASH</A></H3>
+<P><STRONG>usage</STRONG> <EM>protected</EM> <EM>abstract</EM></P>
+<PRE>
+    $HTML = $this-&gt;callback_HASH( 'VAR_NAME', \%hash )</PRE>
+<PRE>
+        $HTML       -   A chunk of html as a string, possibly
+                        containing other embedded template variables.
+        'VAR_NAME'  -   The template variable name that refers to the
+                        hash reference \%hash.
+        \%hash      -   The reference to the hash of data referred
+                        to by the template variable 'VAR_NAME'.</PRE>
+<P>Only called when a template variable contains a
+reference to a HASH. Default implementation
+returns the empty string ``''.</P>
+<P>
+<H3><A NAME="callback_scalar">callback_SCALAR</A></H3>
+<P><STRONG>usage</STRONG> <EM>protected</EM> <EM>abstract</EM></P>
+<PRE>
+    $HTML = $this-&gt;callback_SCALAR( 'VAR_NAME', \$scalar )</PRE>
+<PRE>
+        $HTML       -   A chunk of html as a string, possibly
+                        containing other embedded template variables.
+        'VAR_NAME'  -   The template variable name that refers to the
+                        scalar reference \$scalar.
+        \$scalar    -   The reference to the scalar referred
+                        to by the template variable 'VAR_NAME'.</PRE>
+<P>Only called when a template variable contains
+a reference to a scalar. Default implementation
+returns the empty string ``''.</P>
+<P>
+<H3><A NAME="callback_glob">callback_GLOB</A></H3>
+<P><STRONG>usage</STRONG> <EM>protected</EM> <EM>abstract</EM></P>
+<PRE>
+    $HTML = $this-&gt;callback_GLOB( 'VAR_NAME', \*glob )</PRE>
+<PRE>
+        $HTML       -   A chunk of html as a string, possibly
+                        containing other embedded template variables.
+        'VAR_NAME'  -   The template variable name that refers to the
+                        typeglob reference \*glob.
+        \*glob      -   The reference to the typeglob referred
+                        to by the template variable 'VAR_NAME'.</PRE>
+<P>Since you may even want to do something innovative with
+typeglob references, voila. i don't see why
+you couldn't pass open filehandles or open sockets,
+though i haven't tried, yet. Default implementation
+returns the empty string ``''.</P>
+<P>
+<HR>
+<H1><A NAME="credits">CREDITS</A></H1>
+<P>
+<H2><A NAME="authors and contacts">Authors and contacts</A></H2>
+<PRE>
+    Matt Harrison &lt;<A HREF="mailto://mharriso@rna.bio.mq.edu.au&gt">mailto://mharriso@rna.bio.mq.edu.au&gt</A>;
+    Brian Ng &lt;<A HREF="mailto://brian@m80.org&gt">mailto://brian@m80.org&gt</A>;
+    Brian Slesinsky</PRE>
+<P>This module is based on an original version of a
+module by Brian Ng, which in turn was based on
+an original work by Brian Slesinsky. Almost all
+of Brian Ng's version was rewritten by Matt Harrison
+to include a superset of the functionality present
+in the original, in order to support things like
+callbacks, references, and nested variables in
+template variables. This new module forms the
+delivery backbone of an as yet publically-unreleased
+bioinformatics project. This module is fully backwardly
+compatible with Brian's module as far as i am aware.</P>
+<P>Please feel free to contact me, matt harrison, for technical comments
+and/or suggestions for improvement, stupid things i've done or
+whatever. Questions about usage not covered by the document are
+probably also welcome. Enjoy.</P>
+<P>
+<H2><A NAME="legalese">Legalese</A></H2>
+<P>Copyright 2000 Matt Harrison; all rights reserved.
+Written during the month of april 2000, Matt Harrison.</P>
+<P>Some pieces of code were taken verbatim from Brian's module -
+this code is his.</P>
+<P>This program is free software; you are free to redistribute it
+and/or modify it under the same terms as Perl itself. The authors
+make no claim of warranty, express, implied or even vaguely hinted at.
+This means: you use it at your own risk.</P>
+
+</BODY>
+
+</HTML>

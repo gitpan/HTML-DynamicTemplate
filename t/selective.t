@@ -1,6 +1,4 @@
 use strict;
-use English;
-
 use HTML::DynamicTemplate;
 
 print "1..1\n";
@@ -38,13 +36,14 @@ my @variables = ('TEST',
                  'INCLUDE_PATH');
 
 my $result = $template->render(@variables);
-
 my $expected;
-open EXPECTED, "t/selective_expected.txt" or die $OS_ERROR;
-while(<EXPECTED>) { $expected .= $ARG }
+
+local $/ = undef;
+open EXPECTED, "t/selective_expected.txt" or die $!;
+$expected = <EXPECTED>;
 close EXPECTED;
 
-open RESULT, ">t/selective_result.txt" or die $OS_ERROR;
+open RESULT, ">t/selective_result.txt" or die $!;
 print RESULT $result;
 close RESULT;
 

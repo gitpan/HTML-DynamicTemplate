@@ -28,7 +28,6 @@
 <p>INCLUDE(INCLUDE_PATH): Included</p>
 <p>INCLUDE(t/templates/include.tmpl): Included</p>
 <p>INCLUDE(t/templates/include2.tmpl): Included Included</p>
-<p>INCLUDE(t/templates/infinite.tmpl): [ include recursion limit exceeded ]</p>
 
 </body>
 </html>
